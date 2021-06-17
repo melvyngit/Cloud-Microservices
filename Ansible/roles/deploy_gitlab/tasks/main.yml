@@ -1,0 +1,72 @@
+---
+- name: Check if gitlab is set
+  become: true
+  stat:
+    path: /etc/gitlab/gitlab.rb
+  register: gitlab_set_status
+  tags: gitlab
+
+- name: Install dependencies for gitlab
+  become: true
+  apt:
+    name: [ 'ca-certificates', 'curl', 'openssh-server', 'postfix']
+    state: latest
+    update_cache: yes
+    force_apt_get: yes
+  when: gitlab_set_status.stat.exists == False
+  tags: gitlab
+
+- name: Download script installer
+  become: true
+  get_url:
+    url: "https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh"
+    dest: "/tmp/"
+  when: gitlab_set_status.stat.exists == False
+  tags: gitlab
+
+- name: Changing permission of the installer
+  become: true
+  file:
+    dest: /tmp/script.deb.sh
+    mode: a+x
+  when: gitlab_set_status.stat.exists == False
+  tags: gitlab
+
+- name: Run the installer
+  become: true
+  shell: /tmp/script.deb.sh
+  when: gitlab_set_status.stat.exists == False
+  tags: gitlab
+
+- name: Check if gitlab is installed
+  become: true
+  stat:
+    path: "/usr/bin/gitlab-ctl"
+  register: gitlab_status
+
+- name: Install gitlab
+  become: true
+  apt:
+    name: gitlab-ce
+    state: latest
+    update_cache: yes
+    force_apt_get: yes
+  when: gitlab_status.stat.exists == False
+  tags: gitlab
+
+- name: Deploy gitLab configuration file
+  become: true
+  template:
+    src: gitlab.rb.j2
+    dest: /etc/gitlab/gitlab.rb
+    owner: root
+    group: root
+    mode: 0600
+  when: gitlab_status.stat.exists == False
+  tags: gitlab
+
+- name: Reconfiguring gitlab
+  become: true
+  shell: gitlab-ctl reconfigure
+  when: gitlab_status.stat.exists == False
+  tags: gitlab

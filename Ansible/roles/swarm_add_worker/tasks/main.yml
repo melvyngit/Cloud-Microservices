@@ -1,0 +1,6 @@
+---
+- name: Add workers to swarm
+  become: true
+  shell: "docker swarm join --token {{ hostvars['swarm_manager']['worker_token']['stdout'] }} {{ hostvars['swarm_manager']['ansible_default_ipv4']['address'] }}:{{ worker_port }}"
+  when: docker_status.stat.exists == False
+  tags: worker

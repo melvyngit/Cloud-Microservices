@@ -1,0 +1,44 @@
+---
+- name: Installing Docker to all nodes
+  hosts: docker_nodes
+  roles:
+    - install_docker
+
+- name: Initialize swarm
+  hosts: swarm_managers
+  roles:
+    - init_swarm_manager
+
+- name: Adding workers to swarm
+  hosts: swarm_workers
+  roles:
+    - swarm_add_worker
+
+- name: Deploy the registry service
+  hosts: swarm_managers
+  roles:
+    - deploy_registry
+
+- name: Deploy gitlab
+  hosts: swarm_managers
+  roles:
+    - deploy_gitlab
+
+- name: Deploy tick stack to workers
+  hosts: swarm_workers
+  roles:
+    - docker_tickstack_workers
+
+- name: Deploy tick stack manager
+  hosts: swarm_managers
+  roles:
+    - docker_tickstack_manager
+
+- name: Deploy microservices stack
+  hosts: swarm_managers
+  roles:
+    - deploy_authentication
+    - deploy_catalog
+    - deploy_booking
+    - deploy_gateway
+    - deploy_stack_microservices

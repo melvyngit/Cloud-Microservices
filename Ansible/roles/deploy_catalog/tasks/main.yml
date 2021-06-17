@@ -1,0 +1,54 @@
+---
+- name: Synchronize microservices dockerfile
+  synchronize:
+    src: "{{ playbook_dir }}/../src/{{ item }}"
+    dest: "/home/{{ ansible_user_id }}/"
+  loop:
+    - docker
+    - api-catalog
+  tags: catalog
+
+- name: Deploy environement variables
+  become: true
+  template:
+    src: env.j2
+    dest: "/home/{{ ansible_user_id }}/api-catalog/.env"
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_id }}"
+    mode: '0644'
+  tags: catalog
+
+- name: Build php-fpm dockerfile
+  become: true
+  docker_image:
+    build:
+      path: "/home/{{ ansible_user_id }}/docker/php-fpm/"
+      pull: yes
+    name: php-fpm
+    repository: 127.0.0.1:5000/php-fpm
+    tag: latest
+    push: yes
+    source: build
+    force_absent: yes
+    force_tag: yes
+    force_source: yes
+  tags: catalog
+
+- name: Build nginx dockerfile
+  become: true
+  docker_image:
+    build:
+      path: "/home/{{ ansible_user_id }}/docker/nginx/"
+      args:
+        PHP_UPSTREAM_CONTAINER: "catalog_php-fpm"
+        PHP_UPSTREAM_PORT: 9000
+      pull: yes
+    name: "catalog_nginx"
+    repository: "127.0.0.1:5000/catalog_nginx"
+    tag: latest
+    push: yes
+    source: build
+    force_absent: yes
+    force_tag: yes
+    force_source: yes
+  tags: catalog

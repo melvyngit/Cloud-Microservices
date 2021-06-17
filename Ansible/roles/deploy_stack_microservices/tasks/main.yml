@@ -1,0 +1,20 @@
+---
+- name: Build database image inside local registry
+  become: true
+  docker_image:
+    name: postgres:12-alpine
+    repository: "127.0.0.1:5000/postgres:12-alpine"
+    push: yes
+    source: pull
+  tags: microservices
+
+- name: Synchronize dockerfile microservices stack
+  synchronize:
+    src: "{{ playbook_dir }}/../src/docker-stack.yml"
+    dest: "/home/{{ ansible_user_id }}/"
+  tags: microservices
+
+- name: Deploy microservices service in swarm
+  become: true
+  shell: "docker stack deploy --compose-file /home/{{ ansible_user_id }}/docker-stack.yml microservices-stack"
+  tags: microservices

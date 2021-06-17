@@ -1,0 +1,30 @@
+---
+- name: Check if docker swarm is installed
+  become: true
+  docker_swarm_info:
+  ignore_errors: yes
+  register: swarm_status
+  tags: manager
+
+- name: Initialize swarm
+  become: true
+  docker_swarm:
+    advertise_addr: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:{{ swarm_port }}"
+    state: present
+  when: swarm_status.docker_swarm_active != true
+  run_once: true
+  tags: manager
+
+- name: Get the manager token
+  become: true
+  shell: docker swarm join-token --quiet manager
+  when: swarm_status.docker_swarm_active != true
+  register: manager_token
+  tags: manager
+
+- name: Get the worker token
+  become: true
+  shell: docker swarm join-token --quiet worker
+  when: swarm_status.docker_swarm_active != true
+  register: worker_token
+  tags: manager

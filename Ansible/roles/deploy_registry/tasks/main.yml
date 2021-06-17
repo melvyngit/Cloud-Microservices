@@ -1,0 +1,30 @@
+---
+- name: Check the registry status
+  become: true
+  shell: docker service ls --filter name=registry | grep '\sregistry\s' | awk '{ print $1 }'
+  register: registry_status
+  tags: registry
+
+- name: Pull the registry image
+  become: true
+  docker_image:
+    name: registry
+    state: present
+    tag: "2"
+    source: pull
+  when: registry_status.stdout == ""
+  tags: registry
+
+- name: Create the registry persistent directory
+  become: true
+  file:
+    path: "{{ registry_dir }}"
+    state: directory
+  when: registry_status.stdout == ""
+  tags: registry
+
+- name: Start registry service
+  become: true
+  shell: "docker service create --name registry --publish {{ registry_port }}:5000 --mount type=bind,src={{ projet_directory }},dst=/var/lib/registry --constraint 'node.role == manager' registry:2"
+  when: registry_status.stdout == ""
+  tags: registry

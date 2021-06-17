@@ -1,0 +1,4 @@
+---
+gitlab_root_password: P@SSW0RD
+gitlab_url: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+gitlab_port: 4000

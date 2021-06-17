@@ -1,0 +1,76 @@
+---
+- name: Check if microservices are set
+  become: true
+  shell: docker stack ls | grep 'tick' | awk '{ print $1 }'
+  register: tickstack_status
+  tags: tick_stack
+
+- name: Synchronize tick stack to master swarm
+  synchronize:
+    src: "{{ playbook_dir }}/tick-stack"
+    dest: "/home/{{ ansible_user_id }}/"
+  when: tickstack_status.stdout == ""
+  tags: tick_stack
+
+- name: Create directory for tick stack volumes
+  become: true
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0775
+  when: tickstack_status.stdout == ""
+  with_items:
+    - /etc/kapacitor/config/
+    - /etc/influxdb/config/
+    - /etc/telegraf/
+  tags: tick_stack
+
+- name: Deploy config files for tick stack
+  become: true
+  copy:
+    src: "{{ playbook_dir }}/tick-stack/{{ item }}.conf"
+    dest: "/etc/{{ item }}/config/"
+    owner: root
+    group: root
+    mode: 0755
+  when: tickstack_status.stdout == ""
+  with_items:
+    - kapacitor
+    - influxdb
+  tags: tick_stack
+
+- name: Deploy config files for tick stack
+  become: true
+  template:
+    src: "{{ item }}.conf.j2"
+    dest: "/etc/{{ item }}/{{ item }}.conf"
+    owner: root
+    group: root
+    mode: 0755
+  when: tickstack_status.stdout == ""
+  with_items:
+    - telegraf
+  tags: tick_stack
+
+- name: Build and push image inside local registry
+  become: true
+  docker_image:
+    name: "{{ item }}"
+    repository: "127.0.0.1:5000/{{ item }}"
+    push: yes
+    source: pull
+  when: tickstack_status.stdout == ""
+  loop:
+     - chronograf
+     - influxdb
+     - kapacitor
+     - telegraf
+  tags: tick_stack
+
+- name: Deploy tick stack service in swarm
+  become: true
+  shell: "docker stack deploy --compose-file /home/{{ ansible_user_id }}/tick-stack/docker-compose-tick.yml tick"
+  when: tickstack_status.stdout == ""
+  tags: tick_stack

@@ -1,0 +1,75 @@
+version: '3'
+
+services:
+  chronograf:
+    image: 127.0.0.1:5000/chronograf
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - chronograf-data:/var/lib/chronograf
+    ports:
+      - "8888:8888"
+    networks:
+      - influx
+    depends_on:
+      - kapacitor
+      - influxdb
+  kapacitor:
+    image: 127.0.0.1:5000/kapacitor
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - kapacitor-data:/var/lib/kapacitor
+      - /etc/kapacitor/config:/etc/kapacitor
+    ports:
+      - "9092:9092"
+    networks:
+      - influx
+    depends_on:
+      - influxdb
+  telegraf:
+    image: 127.0.0.1:5000/telegraf
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - /etc/telegraf:/etc/telegraf
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - influx
+    depends_on:
+      - influxdb
+  influxdb:
+    image: 127.0.0.1:5000/influxdb
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+      - /etc/influxdb/config:/etc/influxdb
+    ports:
+      - "8086:8086"
+    networks:
+      - influx
+networks:
+  influx:
+
+volumes:
+  chronograf-data:
+  kapacitor-data:
+  influxdb-data:

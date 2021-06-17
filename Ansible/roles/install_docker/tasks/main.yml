@@ -1,0 +1,66 @@
+---
+- name: Check if aptitude is installed
+  become: true
+  stat:
+    path: /usr/bin/aptitude
+  register: aptitude_status
+  tags: docker
+
+- name: Install aptitude using apt
+  become: true
+  apt:
+    name: aptitude
+    state: latest
+    update_cache: yes
+    force_apt_get: yes
+  when: aptitude_status.stat.exists == False
+  tags: docker
+
+- name: Check if docker is installed
+  become: true
+  stat:
+    path: /etc/init.d/docker
+  register: docker_status
+  tags: docker
+
+- name: Install required system packages
+  become: true
+  apt:
+    name: "{{ item }}"
+    state: latest
+    update_cache: yes
+  loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python-pip', 'virtualenv', 'python-setuptools']
+  when: docker_status.stat.exists == False
+  tags: docker
+
+- name: Add docker gpg apt key
+  become: true
+  apt_key:
+    url: https://download.docker.com/linux/debian/gpg
+    state: present
+  when: docker_status.stat.exists == False
+  tags: docker
+
+- name: Add docker repository
+  become: true
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/debian stretch stable
+    state: present
+  when: docker_status.stat.exists == False
+  tags: docker
+
+- name: Update apt and install docker-ce
+  become: true
+  apt:
+    update_cache: yes
+    name: docker-ce
+    state: latest
+  when: docker_status.stat.exists == False
+  tags: docker
+
+- name: Install docker module for python
+  become: true
+  pip:
+    name: docker, passlib
+  when: docker_status.stat.exists == False
+  tags: docker

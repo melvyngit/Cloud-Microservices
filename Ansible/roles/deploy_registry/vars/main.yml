@@ -1,0 +1,4 @@
+---
+registry_dir: /var/lib/registry
+registry_port: 5000
+projet_directory: /root
